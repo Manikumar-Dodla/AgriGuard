@@ -11,11 +11,9 @@ import ErrorPage from './pages/ErrorPage.jsx'
 import Irrigation from './pages/Irrigation.jsx'
 import Contact from './pages/Contact.jsx'
 import CropSuggestion from './pages/CropSuggestion.jsx'
-import Chatbot from './pages/Chatbot.jsx'
 import CropsData from './pages/CropsData.jsx'
 import Connect from './pages/Connect.jsx'
 import Gallery from './pages/Gallery.jsx'
-import WaterManagement from './pages/WaterConservation.jsx'
 import Disease from './pages/Disease.jsx'
 import Signup from './pages/Signup.jsx'
 import Login from './pages/Login.jsx'
@@ -61,10 +59,6 @@ const router = createBrowserRouter([
     element: <Profile />
   },
   {
-    path: '/chatbot',
-    element: <Chatbot />
-  },
-  {
     path: '/cropdata',
     element: <CropsData />
   },
@@ -83,10 +77,6 @@ const router = createBrowserRouter([
   {
     path: '/gallery',
     element: <Gallery />
-  },
-  {
-    path: '/WaterManagement',
-    element: <WaterManagement />
   },
   {
     path: '/disease-detection',

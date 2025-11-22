@@ -4,8 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   FaChartLine, FaBell, FaTint, FaMicroscope,
-  FaSeedling, FaDatabase, FaUsers, FaHandHoldingWater,
-  FaRobot 
+  FaSeedling, FaDatabase, FaUsers, FaRobot 
 } from 'react-icons/fa';
 import { TbMapSearch } from "react-icons/tb";
 import Navbar from '../components/Navbar';
@@ -64,7 +63,7 @@ const Homepage = () => {
       icon: FaSeedling, 
       label: 'Crop Guide', 
       path: '/CropSuggestion',
-      description: 'Get personalized crop suggestions'
+      description: 'Get personalized crop suggestions based on your soil'
     },
     { 
       icon: FaMicroscope, 
@@ -82,19 +81,13 @@ const Homepage = () => {
       icon: FaUsers, 
       label: 'Connect', 
       path: '/Expert',
-      description: 'Connect with agriculture experts'
-    },
-    { 
-      icon: FaHandHoldingWater, 
-      label: 'Water Management', 
-      path: '/WaterManagement',
-      description: 'Efficient water conservation techniques'
+      description: 'Connect with agriculture experts for advice'
     },
     {
       icon: TbMapSearch,
       label: 'Cold Storage Locator',
       path: '/ColdStorages',
-      description: 'Find your nearest cold storages'
+      description: 'Find your nearest cold storages easily'
     }
   ];
 
@@ -142,18 +135,7 @@ const Homepage = () => {
         </motion.div>
       </div>
 
-      {/* Floating Chatbot Button */}
-      <motion.div
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.9 }}
-        className="fixed bottom-6 right-6 bg-gradient-to-r from-green-400 to-blue-500 
-                   rounded-full p-4 shadow-lg cursor-pointer hover:shadow-xl 
-                   transition-all duration-300 z-50"
-        onClick={() => navigate('/chatbot')}
-      >
-        <FaRobot className="text-white text-2xl" />
-        <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs  flex items-center justify-center"></span>
-      </motion.div>
+      
     </motion.div>
   );
 };
