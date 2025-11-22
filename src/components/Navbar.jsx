@@ -3,11 +3,13 @@ import { Link, useLocation } from 'react-router-dom';
 import { FaBars, FaTimes, FaUserAlt } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 
+import { onAuthStateChanged } from "firebase/auth";
+import { auth } from "../pages/firebase";
+
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [user, setUser] = useState(null);
-  const [dropdownVisible, setDropdownVisible] = useState(false); // State for showing/hiding dropdown
   const location = useLocation();
 
   const navLinks = [
@@ -17,11 +19,15 @@ const Navbar = () => {
     { title: 'Contact Us', path: '/contact' },
   ];
 
+  // 🔥 Listen to Firebase login/logout status
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    setUser(token ? true : null);
+    const unsub = onAuthStateChanged(auth, (firebaseUser) => {
+      setUser(firebaseUser || null);
+    });
+    return () => unsub();
   }, []);
 
+  // Navbar scroll effect
   useEffect(() => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 20);
@@ -29,11 +35,6 @@ const Navbar = () => {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
-
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    setUser(null);
-  };
 
   return (
     <motion.nav
@@ -45,6 +46,8 @@ const Navbar = () => {
                   backdrop-blur-lg rounded-2xl border border-white/10 shadow-lg`}
     >
       <div className="flex items-center justify-between h-16 px-6 sm:px-8">
+
+        {/* Logo */}
         <motion.div whileHover={{ scale: 1.05 }}>
           <Link to="/" className="text-2xl font-bold bg-gradient-to-r from-green-400 to-blue-500 bg-clip-text text-transparent">
             AgriGuard
@@ -65,16 +68,15 @@ const Navbar = () => {
             </Link>
           ))}
 
+          {/* 🔥 ONLY profile icon */}
           {user ? (
-            <>
-              <Link to="/profile" className="text-lg text-white/90 hover:text-green-400">
-                <FaUserAlt className="inline mr-2" /> Profile
-              </Link>
-            </>
+            <Link to="/profile" className="text-white/90 hover:text-green-400 text-xl">
+              <FaUserAlt />
+            </Link>
           ) : (
             <Link
               to="/login"
-              className="text-white bg-gradient-to-r from-green-400 to-blue-500 px-4 py-2 rounded-lg hover:bg-green-400"
+              className="text-white bg-gradient-to-r from-green-400 to-blue-500 px-4 py-2 rounded-lg hover:opacity-90"
             >
               Log In
             </Link>
@@ -90,38 +92,39 @@ const Navbar = () => {
         </button>
       </div>
 
-      {/* Mobile Menu Dropdown */}
+      {/* Mobile Menu */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
+            animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="sm:hidden mt-2 bg-black/90 rounded-lg shadow-lg"
+            className="sm:hidden mt-2 bg-black/90 rounded-lg shadow-lg overflow-hidden"
           >
             {navLinks.map((link) => (
               <Link
                 key={link.title}
                 to={link.path}
-                className="block px-4 py-2 text-white hover:bg-gray-800"
                 onClick={() => setIsOpen(false)}
+                className="block px-4 py-3 text-white hover:bg-gray-800"
               >
                 {link.title}
               </Link>
             ))}
 
             {user ? (
-              <button
-                onClick={handleLogout}
-                className="block w-full text-left px-4 py-2 text-red-500 hover:bg-gray-800"
+              <Link
+                to="/profile"
+                onClick={() => setIsOpen(false)}
+                className="block px-4 py-3 text-white hover:bg-gray-800"
               >
-                Log Out
-              </button>
+                Profile
+              </Link>
             ) : (
               <Link
                 to="/login"
-                className="block px-4 py-2 text-white hover:bg-gray-800"
                 onClick={() => setIsOpen(false)}
+                className="block px-4 py-3 text-white hover:bg-gray-800"
               >
                 Log In
               </Link>

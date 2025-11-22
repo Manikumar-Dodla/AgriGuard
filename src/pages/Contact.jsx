@@ -1,39 +1,69 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { motion } from 'framer-motion';
 import Navbar from '../components/Navbar';
-import { FaEnvelope, FaUser, FaPencilAlt, FaPaperPlane } from 'react-icons/fa';
+import { FaPaperPlane } from 'react-icons/fa';
+
+import { auth, db } from "./firebase";
+import { onAuthStateChanged } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
 
 const Contact = () => {
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    subject: '',
-    message: '',
-  });
+  const [user, setUser] = useState(null);
+  const [userProfile, setUserProfile] = useState(null);
 
+  const [message, setMessage] = useState("");
   const [submitSuccess, setSubmitSuccess] = useState('');
   const [submitError, setSubmitError] = useState('');
 
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
+  // Listen to user
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        setUser(firebaseUser);
+
+        // Fetch Firestore profile
+        const ref = doc(db, "users", firebaseUser.uid);
+        const snap = await getDoc(ref);
+        if (snap.exists()) {
+          setUserProfile(snap.data());
+        }
+      } else {
+        setUser(null);
+      }
     });
-  };
+
+    return () => unsub();
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log(formData);  // Log form data to check if it's correctly sent
-  
+
+    if (!message.trim()) {
+      setSubmitError("Message cannot be empty");
+      return;
+    }
+
     try {
-      const response = await axios.post('http://localhost:5000/api/contact', formData);
-      setSubmitSuccess('Your message has been sent successfully!');
-      setSubmitError('');
+      const payload = {
+        name: userProfile.name,
+        email: userProfile.email,
+        subject: "User Message",
+        message: message,
+      };
+
+      console.log("Sending:", payload);
+
+      await axios.post("http://localhost:5000/api/contact", payload);
+
+      setSubmitSuccess("Your message has been sent successfully!");
+      setSubmitError("");
+      setMessage("");
+
     } catch (error) {
-      console.error('Error submitting form:', error.response ? error.response.data : error.message);
-      setSubmitSuccess('');
-      setSubmitError('Something went wrong, please try again.');
+      console.error("Error:", error);
+      setSubmitSuccess("");
+      setSubmitError("Something went wrong. Try again.");
     }
   };
 
@@ -44,7 +74,9 @@ const Contact = () => {
       className="min-h-screen pt-20 bg-gradient-to-br from-black via-gray-900 to-black"
     >
       <Navbar />
+
       <div className="container mx-auto px-4 py-8">
+
         <motion.div
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
@@ -58,112 +90,82 @@ const Contact = () => {
           </p>
         </motion.div>
 
-        <motion.div
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.2 }}
-          className="max-w-xl mx-auto backdrop-blur-xl bg-white/5 p-8 rounded-2xl border border-white/10"
-        >
-          {submitSuccess && <p className="text-green-500 text-center mb-4">{submitSuccess}</p>}
-          {submitError && <p className="text-red-500 text-center mb-4">{submitError}</p>}
+        {/* NOT LOGGED IN */}
+        {!user && (
+          <div className="max-w-xl mx-auto text-center text-white">
+            <p className="text-lg mb-4">You must be logged in to send a message.</p>
+            <a
+              href="/login"
+              className="px-6 py-3 bg-purple-600 hover:bg-purple-700 rounded-lg text-white"
+            >
+              Log In
+            </a>
+          </div>
+        )}
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <label className="block text-white/80 text-sm font-medium mb-2" htmlFor="name">
-                Name
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <FaUser className="text-purple-400" />
-                </div>
+        {/* LOGGED IN USER FORM */}
+        {user && userProfile && (
+          <motion.div
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.2 }}
+            className="max-w-xl mx-auto backdrop-blur-xl bg-white/5 p-8 rounded-2xl border border-white/10"
+          >
+            {submitSuccess && <p className="text-green-500 text-center mb-4">{submitSuccess}</p>}
+            {submitError && <p className="text-red-500 text-center mb-4">{submitError}</p>}
+
+            <form onSubmit={handleSubmit} className="space-y-6">
+
+              {/* Name (READ ONLY) */}
+              <div>
+                <label className="block text-white/80 text-sm font-medium mb-2">Name</label>
                 <input
                   type="text"
-                  id="name"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  className="w-full pl-10 pr-4 py-3 bg-white/5 border border-white/10 rounded-lg 
-                           text-white placeholder-white/40 focus:outline-none focus:border-purple-500
-                           transition-colors"
-                  placeholder="Your Name"
+                  value={userProfile.name}
+                  readOnly
+                  className="w-full px-4 py-3 bg-white/10 rounded-lg text-white opacity-60 cursor-not-allowed"
                 />
               </div>
-            </div>
 
-            <div>
-              <label className="block text-white/80 text-sm font-medium mb-2" htmlFor="email">
-                Email
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <FaEnvelope className="text-purple-400" />
-                </div>
+              {/* Email (READ ONLY) */}
+              <div>
+                <label className="block text-white/80 text-sm font-medium mb-2">Email</label>
                 <input
                   type="email"
-                  id="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  className="w-full pl-10 pr-4 py-3 bg-white/5 border border-white/10 rounded-lg 
-                           text-white placeholder-white/40 focus:outline-none focus:border-purple-500
-                           transition-colors"
-                  placeholder="Your Email"
+                  value={userProfile.email}
+                  readOnly
+                  className="w-full px-4 py-3 bg-white/10 rounded-lg text-white opacity-60 cursor-not-allowed"
                 />
               </div>
-            </div>
 
-            <div>
-              <label className="block text-white/80 text-sm font-medium mb-2" htmlFor="subject">
-                Subject
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <FaPencilAlt className="text-purple-400" />
-                </div>
-                <input
-                  type="text"
-                  id="subject"
-                  name="subject"
-                  value={formData.subject}
-                  onChange={handleChange}
-                  className="w-full pl-10 pr-4 py-3 bg-white/5 border border-white/10 rounded-lg 
-                           text-white placeholder-white/40 focus:outline-none focus:border-purple-500
-                           transition-colors"
-                  placeholder="Subject"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-white/80 text-sm font-medium mb-2" htmlFor="message">
-                Message
-              </label>
-              <textarea
-                id="message"
-                name="message"
-                rows="4"
-                value={formData.message}
-                onChange={handleChange}
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg 
+              {/* Message */}
+              <div>
+                <label className="block text-white/80 text-sm font-medium mb-2">Message</label>
+                <textarea
+                  rows="4"
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg 
                          text-white placeholder-white/40 focus:outline-none focus:border-purple-500
                          transition-colors resize-none"
-                placeholder="Your Message"
-              ></textarea>
-            </div>
+                  placeholder="Your message"
+                ></textarea>
+              </div>
 
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              type="submit"
-              className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-gradient-to-r 
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                type="submit"
+                className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-gradient-to-r 
                        from-purple-500 to-pink-500 text-white rounded-lg font-medium 
                        hover:from-purple-600 hover:to-pink-600 transition-all duration-200"
-            >
-              <FaPaperPlane />
-              Send Message
-            </motion.button>
-          </form>
-        </motion.div>
+              >
+                <FaPaperPlane />
+                Send Message
+              </motion.button>
+            </form>
+          </motion.div>
+        )}
       </div>
     </motion.div>
   );

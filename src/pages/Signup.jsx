@@ -3,9 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import Navbar from '../components/Navbar';
 
+// Firebase imports
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import { doc, setDoc } from "firebase/firestore";
+import { auth, db } from "./firebase";
+
 const Signup = () => {
   const [formData, setFormData] = useState({
-    username: '',
+    email: '',
     password: '',
     confirmPassword: '',
     name: '',
@@ -29,7 +34,7 @@ const Signup = () => {
 
   const validateForm = () => {
     const newErrors = {};
-    if (!formData.username.trim()) newErrors.username = 'Username is required.';
+    if (!formData.email.trim()) newErrors.email = 'Email is required.';
     if (!formData.password.trim()) newErrors.password = 'Password is required.';
     if (formData.password !== formData.confirmPassword) newErrors.passwordMatch = 'Passwords do not match.';
     if (!formData.name.trim()) newErrors.name = 'Name is required.';
@@ -45,40 +50,39 @@ const Signup = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (validateForm()) {
-      try {
-        const response = await fetch('http://localhost:5000/api/users/signup', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(formData),
-        });
-  
-        const data = await response.json();
-        console.log('Signup Response:', data); // Debugging log
-  
-        if (response.ok) {
-          alert('Signed up successfully!');
-          if (data.token) {
-            console.log('Token received:', data.token); // Debugging log
-            localStorage.setItem('token', data.token);
-            setUser({ username: formData.username });
-            navigate('/'); // Redirect to home
-          } else {
-            console.error('Token missing in response');
-            alert('Token is missing from the response.');
-          }
-        } else {
-          alert(data.message || 'Signup failed. Try again!');
-        }
-      } catch (error) {
-        console.error('Error:', error);
-        alert('Server error, please try again later.');
-      }
+    if (!validateForm()) return;
+
+    try {
+      // Firebase signup
+      const userCred = await createUserWithEmailAndPassword(
+        auth,
+        formData.email,
+        formData.password
+      );
+
+      const uid = userCred.user.uid;
+
+      // Save extra fields in Firestore
+      await setDoc(doc(db, "users", uid), {
+        email: formData.email,
+        name: formData.name,
+        age: formData.age,
+        locality: formData.locality,
+        landOwned: formData.landOwned,
+        soilType: formData.soilType,
+        cropPlanted: formData.cropPlanted,
+        createdAt: new Date(),
+      });
+
+      alert("Signup successful!");
+      setUser({ email: formData.email });
+      navigate('/');
+
+    } catch (error) {
+      console.error("Firebase signup error:", error);
+      alert(error.message || "Signup failed.");
     }
   };
-  
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-screen pt-20 bg-gradient-to-br from-black via-gray-900 to-black flex items-center justify-center">
@@ -93,20 +97,21 @@ const Signup = () => {
         <p className="text-center text-white/60 mb-8">Sign up to access your AgroTech dashboard.</p>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Username */}
+
+          {/* Email */}
           <div>
-            <label htmlFor="username" className="block text-sm text-white/80 mb-2">
-              Username<span className="text-red-500">*</span>
+            <label htmlFor="email" className="block text-sm text-white/80 mb-2">
+              Email<span className="text-red-500">*</span>
             </label>
             <input
-              type="text"
-              name="username"
-              id="username"
-              value={formData.username}
+              type="email"
+              name="email"
+              id="email"
+              value={formData.email}
               onChange={handleChange}
               className="w-full px-4 py-2 bg-black/50 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400"
             />
-            {errors.username && <p className="text-red-500 text-sm mt-1">{errors.username}</p>}
+            {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
           </div>
 
           {/* Name */}

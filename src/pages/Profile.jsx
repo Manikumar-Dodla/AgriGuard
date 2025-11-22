@@ -1,174 +1,97 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
+import Navbar from "../components/Navbar";
+import { auth, db } from "./firebase";
+import { onAuthStateChanged, signOut } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
 
 const Profile = () => {
+  const [firebaseUser, setFirebaseUser] = useState(null);
   const [userData, setUserData] = useState(null);
-  const [formData, setFormData] = useState({
-    username: '',
-    name: '',
-    age: '',
-    locality: '',
-    landOwned: '',
-    soilType: '',
-    cropPlanted: '',
-  });
-  const [error, setError] = useState('');
-  const [isEditing, setIsEditing] = useState(false); // Track editing state
   const navigate = useNavigate();
 
-  // Fetch user data when component mounts
+  // Listen for auth state
   useEffect(() => {
-    const fetchUserData = async () => {
-      const token = localStorage.getItem('token');
-
-      if (!token) {
-        navigate('/login');
-        return;
+    const unsub = onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        navigate("/login");
+      } else {
+        setFirebaseUser(user);
       }
+    });
 
-      try {
-        const response = await axios.get('http://localhost:5000/api/users/profile', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+    return () => unsub();
+  }, [navigate]);
 
-        setUserData(response.data);
-        setFormData({
-          username: response.data.username,
-          name: response.data.name,
-          age: response.data.age,
-          locality: response.data.locality,
-          landOwned: response.data.landOwned,
-          soilType: response.data.soilType,
-          cropPlanted: response.data.cropPlanted,
-        });
-      } catch (error) {
-        console.error('Error fetching user data:', error);
-        setError('Error fetching profile data. Please try again later.');
+  // Fetch Firestore user profile
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!firebaseUser) return;
+
+      const ref = doc(db, "users", firebaseUser.uid);
+      const snap = await getDoc(ref);
+
+      if (snap.exists()) {
+        setUserData(snap.data());
+      } else {
+        console.error("User document not found in Firestore.");
       }
     };
 
-    fetchUserData();
-  }, [navigate]);
+    fetchProfile();
+  }, [firebaseUser]);
 
-  // Handle form data change
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
+  const handleLogout = async () => {
+    await signOut(auth);
+    navigate("/");
   };
 
-  // Handle profile update
-  const handleSave = async (e) => {
-    e.preventDefault();
-    const token = localStorage.getItem('token');
-
-    if (!token) {
-      navigate('/login');
-      return;
-    }
-
-    try {
-      const response = await axios.put(
-        'http://localhost:5000/api/users/edit',
-        { ...formData }, // Send updated form data
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      if (response.status === 200) {
-        alert('Profile updated successfully');
-        setUserData(response.data.user);
-        setIsEditing(false); // Exit edit mode
-      }
-    } catch (error) {
-      console.error('Error updating profile:', error);
-      setError('Error updating profile. Please try again later.');
-    }
-  };
-
-  // Toggle between Edit and Save mode
-  const handleEdit = () => setIsEditing(true);
-
-  // Handle logout
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    navigate('/login');
-  };
+  if (!firebaseUser || !userData) {
+    return (
+      <div className="min-h-screen flex justify-center items-center bg-black text-white text-xl">
+        Loading Profile...
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen pt-20 bg-gradient-to-br from-black via-gray-900 to-black flex items-center justify-center">
-      <div className="bg-black/80 backdrop-blur-lg p-8 rounded-2xl shadow-2xl border border-white/10 w-full max-w-md">
-        {error && <p className="text-red-500 text-center mb-4">{error}</p>}
-        <h2 className="text-3xl font-semibold text-center text-white mb-6">Profile</h2>
-        {userData ? (
-          <form onSubmit={isEditing ? handleSave : (e) => e.preventDefault()} className="space-y-6">
-            {/* Username (readonly) */}
-            <div>
-              <label htmlFor="username" className="block text-sm text-white/80 mb-2">
-                Username
-              </label>
-              <input
-                type="text"
-                name="username"
-                id="username"
-                value={formData.username}
-                onChange={handleChange}
-                className="w-full px-4 py-2 bg-black/50 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400"
-                readOnly
-              />
-            </div>
+    <>
+    <Navbar />
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-gray-900 to-black pt-20"
+    >
+      <motion.div
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.2 }}
+        className="bg-black/80 backdrop-blur-lg p-8 rounded-2xl shadow-2xl border border-white/10 w-full max-w-lg text-white"
+      >
+        <h2 className="text-3xl font-semibold text-center mb-6 bg-gradient-to-r from-green-400 to-blue-500 bg-clip-text text-transparent">
+          Your Profile
+        </h2>
 
-            {/* Editable Fields */}
-            {['name', 'age', 'locality', 'landOwned', 'soilType', 'cropPlanted'].map((field) => (
-              <div key={field}>
-                <label htmlFor={field} className="block text-sm text-white/80 mb-2">
-                  {field.charAt(0).toUpperCase() + field.slice(1)}
-                </label>
-                <input
-                  type={field === 'age' ? 'number' : 'text'}
-                  name={field}
-                  id={field}
-                  value={formData[field]}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2 bg-black/50 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400"
-                  readOnly={!isEditing} // Make input fields readonly if not in edit mode
-                />
-              </div>
-            ))}
+        <div className="space-y-4 text-white/90 text-lg">
+          <p><span className="font-semibold">Email:</span> {userData.email}</p>
+          <p><span className="font-semibold">Name:</span> {userData.name}</p>
+          <p><span className="font-semibold">Age:</span> {userData.age}</p>
+          <p><span className="font-semibold">Locality:</span> {userData.locality}</p>
+          <p><span className="font-semibold">Land Owned:</span> {userData.landOwned} acres</p>
+          <p><span className="font-semibold">Soil Type:</span> {userData.soilType}</p>
+          <p><span className="font-semibold">Crop Planted:</span> {userData.cropPlanted}</p>
+        </div>
 
-            {/* Edit/Save and Logout Buttons */}
-            <div className="flex justify-between items-center mt-6">
-              {isEditing ? (
-                <button
-                  type="submit"
-                  className="w-full px-4 py-2 bg-gradient-to-r from-green-400 to-blue-500 text-white rounded-lg font-semibold hover:opacity-90 transition-opacity"
-                >
-                  Save
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleEdit}
-                  className="w-full px-4 py-2 bg-gradient-to-r from-green-400 to-blue-500 text-white rounded-lg font-semibold hover:opacity-90 transition-opacity"
-                >
-                  Edit
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="w-full ml-4 px-4 py-2 bg-red-500 text-white rounded-lg font-semibold hover:opacity-90 transition-opacity"
-              >
-                Logout
-              </button>
-            </div>
-          </form>
-        ) : (
-          <p className="text-center text-white/60">Loading your profile...</p>
-        )}
-      </div>
-    </div>
+        <button
+          onClick={handleLogout}
+          className="w-full mt-8 py-3 bg-red-500 rounded-lg font-semibold hover:bg-red-400 transition-all text-white"
+        >
+          Logout
+        </button>
+      </motion.div>
+    </motion.div>
+    </>
   );
 };
 

@@ -32,26 +32,26 @@ const Disease = () => {
   const predictDisease = async () => {
     try {
       setLoading(true);
-      
-      // Convert base64 to blob
+
       const response = await fetch(image);
       const blob = await response.blob();
-      
-      // Create form data
-      const formData = new FormData();
-      formData.append('file', blob, 'image.jpg');
 
-      // Send to backend
-      const result = await fetch('http://localhost:5000/predict', {
-        method: 'POST',
+      const file = new File([blob], "image.jpg", { type: blob.type });
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const result = await fetch("http://localhost:5001/predict", {
+        method: "POST",
         body: formData,
       });
 
       const data = await result.json();
-      setPrediction(data.prediction);
+      setPrediction(data.prediction || data.error);
+
     } catch (error) {
-      console.error('Error:', error);
-      setPrediction('Error occurred during prediction');
+      console.error("Error:", error);
+      setPrediction("Prediction failed");
     } finally {
       setLoading(false);
     }
@@ -64,6 +64,7 @@ const Disease = () => {
       className="min-h-screen pt-20 bg-gradient-to-br from-black via-gray-900 to-black"
     >
       <Navbar />
+
       <div className="container mx-auto px-4 py-8">
         <motion.div
           initial={{ y: 20, opacity: 0 }}
@@ -80,6 +81,7 @@ const Disease = () => {
 
         <div className="max-w-4xl mx-auto">
           <div className="backdrop-blur-xl bg-white/5 rounded-2xl p-6 border border-white/10">
+
             {showCamera ? (
               <div className="relative">
                 <Webcam
@@ -92,8 +94,8 @@ const Disease = () => {
                   whileTap={{ scale: 0.95 }}
                   onClick={captureImage}
                   className="absolute bottom-4 left-1/2 transform -translate-x-1/2 
-                           px-6 py-2 bg-green-500 text-white rounded-lg 
-                           flex items-center gap-2"
+                             px-6 py-2 bg-green-500 text-white rounded-lg 
+                             flex items-center gap-2"
                 >
                   <FaCamera /> Capture
                 </motion.button>
@@ -112,7 +114,7 @@ const Disease = () => {
                       whileTap={{ scale: 0.95 }}
                       onClick={() => setImage(null)}
                       className="absolute top-2 right-2 p-2 bg-red-500/80 
-                               text-white rounded-full"
+                                 text-white rounded-full"
                     >
                       <FaSync />
                     </motion.button>
@@ -124,30 +126,33 @@ const Disease = () => {
                       <p className="text-white/60 mb-4">
                         Upload an image or use camera to capture
                       </p>
+
                       <div className="flex justify-center gap-4">
                         <motion.button
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
                           onClick={() => setShowCamera(true)}
                           className="px-6 py-2 bg-blue-500 text-white rounded-lg 
-                                   flex items-center gap-2"
+                                     flex items-center gap-2"
                         >
                           <FaCamera /> Use Camera
                         </motion.button>
+
                         <motion.button
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
                           onClick={() => fileInputRef.current.click()}
                           className="px-6 py-2 bg-purple-500 text-white rounded-lg 
-                                   flex items-center gap-2"
+                                     flex items-center gap-2"
                         >
                           <FaUpload /> Upload Image
                         </motion.button>
+
                         <input
                           type="file"
                           ref={fileInputRef}
-                          onChange={handleFileUpload}
                           accept="image/*"
+                          onChange={handleFileUpload}
                           className="hidden"
                         />
                       </div>
@@ -163,10 +168,10 @@ const Disease = () => {
                       onClick={predictDisease}
                       disabled={loading}
                       className="px-8 py-3 bg-gradient-to-r from-green-500 to-blue-500 
-                               text-white rounded-lg flex items-center gap-2
-                               disabled:opacity-50"
+                                 text-white rounded-lg flex items-center gap-2
+                                 disabled:opacity-50"
                     >
-                      {loading ? 'Analyzing...' : 'Detect Disease'}
+                      {loading ? "Analyzing..." : "Detect Disease"}
                     </motion.button>
                   </div>
                 )}
@@ -183,8 +188,10 @@ const Disease = () => {
                     <p className="text-green-400">{prediction}</p>
                   </motion.div>
                 )}
+
               </div>
             )}
+
           </div>
         </div>
       </div>
